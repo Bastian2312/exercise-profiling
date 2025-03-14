@@ -7,9 +7,8 @@ import com.advpro.profiling.tutorial.repository.StudentRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * @author muhammad.khadafi
@@ -25,39 +24,44 @@ public class StudentService {
 
     public List<StudentCourse> getAllStudentsWithCourses() {
         List<Student> students = studentRepository.findAll();
-        List<StudentCourse> studentCourses = new ArrayList<>();
+
+        List<StudentCourse> allStudentCourses = studentCourseRepository.findAll();
+
+        Map<Long, List<StudentCourse>> studentCoursesMap = allStudentCourses.stream()
+                .collect(Collectors.groupingBy(sc -> sc.getStudent().getId()));
+
+        List<StudentCourse> result = new ArrayList<>();
+
         for (Student student : students) {
-            List<StudentCourse> studentCoursesByStudent = studentCourseRepository.findByStudentId(student.getId());
-            for (StudentCourse studentCourseByStudent : studentCoursesByStudent) {
+            List<StudentCourse> courses = studentCoursesMap.getOrDefault(student.getId(), new ArrayList<>());
+            for (StudentCourse course : courses) {
                 StudentCourse studentCourse = new StudentCourse();
                 studentCourse.setStudent(student);
-                studentCourse.setCourse(studentCourseByStudent.getCourse());
-                studentCourses.add(studentCourse);
+                studentCourse.setCourse(course.getCourse());
+                result.add(studentCourse);
             }
         }
-        return studentCourses;
+        return result;
     }
 
     public Optional<Student> findStudentWithHighestGpa() {
-        List<Student> students = studentRepository.findAll();
-        Student highestGpaStudent = null;
-        double highestGpa = 0.0;
-        for (Student student : students) {
-            if (student.getGpa() > highestGpa) {
-                highestGpa = student.getGpa();
-                highestGpaStudent = student;
-            }
-        }
-        return Optional.ofNullable(highestGpaStudent);
+        return studentRepository.findAll().stream()
+                .max(Comparator.comparingDouble(Student::getGpa));
     }
 
     public String joinStudentNames() {
         List<Student> students = studentRepository.findAll();
-        String result = "";
-        for (Student student : students) {
-            result += student.getName() + ", ";
+        if (students.isEmpty()) {
+            return "";
         }
-        return result.substring(0, result.length() - 2);
+        StringBuilder result = new StringBuilder();
+        for (Student student : students) {
+            result.append(student.getName()).append(", ");
+        }
+        // Remove the last comma and space
+        result.setLength(result.length() - 2);
+
+        return result.toString();
     }
 }
 
